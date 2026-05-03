@@ -1,70 +1,58 @@
-# Hookify re-fork
+# hookify v0.2.0 (patched fork)
 
-Clean-room reimplementation of a faster, bug-fixed hookify Claude Code
-plugin. NOT a copy of any prior work — reimplemented from scratch based
-on the official plugin's public architecture and documented bugs.
+Patched fork of Anthropic's hookify Claude Code plugin. Fixes two
+latent bugs, adds a JSON rule cache, and integrates seven
+cherry-picks from the hookify-plus community fork.
 
-## First thing: read the research
+## What shipped in v0.2.0
 
-`~/dev/docs/research/2026-05-02-hookify-claude-code-plugin.md` — full
-analysis of the official plugin, the known bugs (7+ open issues),
-community forks (hookify-plus), performance numbers, and the specific
-improvements to target. Read it before writing any code.
+- **Bug #2 fixed:** Global rules in `~/.claude/` now load regardless
+  of CWD. Project rules override global by name; disabled project
+  rules suppress matching global rules.
+- **Bug #3 fixed:** `event: file` rules now fire on Write operations
+  (was silently bypassed).
+- **JSON rule cache:** mtime-invalidated, stored at
+  `${CLAUDE_PLUGIN_ROOT}/.cache/`. Set `HOOKIFY_NO_CACHE=1` to
+  disable.
+- **7 cherry-picks from hookify-plus:** `not_regex_match` operator,
+  `value` key alias, `read` event type, `permissionDecisionReason`,
+  `Update` tool support, Windows path quoting, fixed example file.
 
-## Goals
+## Development
 
-1. **Fix the import-path bug** — official plugin breaks with
-   `No module named 'hookify'` due to Claude Code's versioned cache
-   path (`hookify/0.1.0/` vs expected `hookify/core/`). Must work from
-   user scope / globally, not just project root. Issues: #13427,
-   #13470, #13568, #13612, #14459, #15793, #28299 (claude-code repo),
-   #20 (claude-plugins-official repo).
+```bash
+python3 -m pytest          # run tests (66 tests)
+python3 -m ruff check .    # lint
+python3 -m ruff format .   # format
+```
 
-2. **JSON-based rule caching** — the official plugin reads and parses
-   .md rule files (YAML frontmatter + markdown body) from disk on
-   EVERY hook event (~5ms). Parse once → serialize parsed rules to a
-   JSON cache file → read the single JSON blob on subsequent events.
-   Invalidate when any .md rule file's mtime changes. Target: <1ms
-   cold cache, <0.1ms warm.
+## Project structure
 
-3. **Find and fix the second bug** — surfaces while fixing #1. Document
-   it when found.
+```
+core/config_loader.py   — rule file parsing + global rule loading
+core/rule_engine.py     — rule evaluation against tool input
+core/cache.py           — JSON rule cache (mtime-invalidated)
+hooks/*.py              — hook entry points (PreToolUse, PostToolUse, Stop, UserPromptSubmit)
+tests/                  — pytest test suite
+docs/plans/             — design doc, specs, implementation plan
+```
 
-4. **Cherry-pick from community forks** — evaluate hookify-plus
-   (adrozdenko) for: `not_regex_match`, `value` key, `read` event
-   support. Take what's good; skip what's not.
+## Key design decisions
 
-## Non-goals
-
-- Don't change hookify's markdown-rule authoring UX — it's good as-is
-- Don't add features beyond what's needed to fix bugs + add caching
-  until the base is solid
-- Don't make this paint-oh-specific — this is a general-purpose plugin
+- **Python 3.10+ floor** — bump to 3.11 when 3.10 EOLs (Oct 2026)
+- **Flat layout preserved** from upstream for diff-friendly patch filing
+- **Cache in `${CLAUDE_PLUGIN_ROOT}/.cache/`** — auto-cleaned on
+  version bump; XDG fallback for non-plugin contexts
+- **Project overrides global** by rule `name`; disabled project rule
+  suppresses matching global rule
+- **Apache 2.0 license** preserved from upstream
 
 ## Reference
 
-- Official plugin: https://github.com/anthropics/claude-code/tree/main/plugins/hookify
-- Official README: https://github.com/anthropics/claude-plugins-official/blob/main/plugins/hookify/README.md
-- hookify-plus (community fork): https://github.com/adrozdenko/hookify-plus
-- Claude Code hooks docs: https://code.claude.com/docs/en/hooks
-- Claude Code plugins docs: https://github.com/anthropics/claude-code/blob/main/plugins/README.md
-
-## Performance targets
-
-| Metric | Official | Target |
-|---|---|---|
-| Per-event latency (cold) | ~5ms | <1ms |
-| Per-event latency (warm) | ~5ms | <0.1ms |
-| Cache invalidation | N/A (no cache) | mtime-based on .md rule files |
-
-## Architecture notes
-
-Official hookify uses these Claude Code hook types:
-- **Command hooks** — run a shell command
-- **Prompt hooks** — send a prompt to Claude for single-turn evaluation
-- Rule files are markdown with YAML frontmatter (hook event, pattern,
-  action)
-
-The caching layer sits between "hook event fires" and "read + parse
-rule files." It doesn't change which hook types are used or how rules
-are authored — it just eliminates the repeated file I/O + YAML parse.
+- Research: `~/dev/docs/research/2026-05-02-hookify-claude-code-plugin.md`
+- Design doc: `docs/plans/2026-05-03-hookify-design.md`
+- Specs: `docs/plans/2026-05-03-spec-cwd-global-rules.md`,
+  `docs/plans/2026-05-03-spec-json-cache.md`
+- Upstream: https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify
+- Bug #2 canonical thread: https://github.com/anthropics/claude-plugins-official/issues/503
+- hookify-plus: https://github.com/adrozdenko/hookify-plus
