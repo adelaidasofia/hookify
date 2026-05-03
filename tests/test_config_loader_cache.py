@@ -15,6 +15,9 @@ from tests.conftest import write_rule
 # ---------------------------------------------------------------------------
 
 
+CACHE_MIN_RULES = 5
+
+
 def _project_claude_dir(env):
     return env["project"] / ".claude"
 
@@ -27,6 +30,21 @@ def _setup_plugin_root(tmp_path, monkeypatch):
     return plugin_root / ".cache"
 
 
+def _write_n_rules(claude_dir, n):
+    """Write n rule files so we exceed the CACHE_MIN_RULES threshold."""
+    paths = []
+    for i in range(n):
+        paths.append(
+            write_rule(
+                claude_dir,
+                f"hookify.rule-{i:02d}.local.md",
+                {"name": f"rule-{i:02d}", "enabled": True, "event": "bash", "pattern": f"pat-{i}"},
+                body=f"Rule {i} body.",
+            )
+        )
+    return paths
+
+
 # ---------------------------------------------------------------------------
 # TestFirstLoadCreatesCache
 # ---------------------------------------------------------------------------
@@ -37,22 +55,25 @@ class TestFirstLoadCreatesCache:
 
     def test_first_load_creates_cache(self, isolated_env, tmp_path, monkeypatch):
         cache_dir = _setup_plugin_root(tmp_path, monkeypatch)
-
-        write_rule(
-            _project_claude_dir(isolated_env),
-            "hookify.test-rule.local.md",
-            {"name": "test-rule", "enabled": True, "event": "bash", "pattern": "rm -rf"},
-            body="Don't rm -rf!",
-        )
+        _write_n_rules(_project_claude_dir(isolated_env), CACHE_MIN_RULES)
 
         rules = load_rules()
-        assert len(rules) == 1
-        assert rules[0].name == "test-rule"
+        assert len(rules) == CACHE_MIN_RULES
 
         # Cache directory and file should exist
         assert cache_dir.exists()
         cache_files = list(cache_dir.glob("*.json"))
         assert len(cache_files) == 1
+
+    def test_below_threshold_skips_cache(self, isolated_env, tmp_path, monkeypatch):
+        cache_dir = _setup_plugin_root(tmp_path, monkeypatch)
+        _write_n_rules(_project_claude_dir(isolated_env), CACHE_MIN_RULES - 1)
+
+        rules = load_rules()
+        assert len(rules) == CACHE_MIN_RULES - 1
+
+        # Cache should NOT be created for small rule sets
+        assert not cache_dir.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -66,17 +87,10 @@ class TestBypassSkipsCache:
     def test_bypass_skips_cache(self, isolated_env, tmp_path, monkeypatch):
         cache_dir = _setup_plugin_root(tmp_path, monkeypatch)
         monkeypatch.setenv("HOOKIFY_NO_CACHE", "1")
-
-        write_rule(
-            _project_claude_dir(isolated_env),
-            "hookify.test-rule.local.md",
-            {"name": "test-rule", "enabled": True, "event": "bash", "pattern": "rm -rf"},
-            body="Don't rm -rf!",
-        )
+        _write_n_rules(_project_claude_dir(isolated_env), CACHE_MIN_RULES)
 
         rules = load_rules()
-        assert len(rules) == 1
-        assert rules[0].name == "test-rule"
+        assert len(rules) == CACHE_MIN_RULES
 
         # No cache file should have been created
         assert not cache_dir.exists()
@@ -94,34 +108,30 @@ class TestCacheInvalidatesOnFileChange:
         _setup_plugin_root(tmp_path, monkeypatch)
         claude_dir = _project_claude_dir(isolated_env)
 
-        # Write original rule with pattern "OLD"
-        rule_path = write_rule(
-            claude_dir,
-            "hookify.mutable.local.md",
-            {"name": "mutable", "enabled": True, "event": "bash", "pattern": "OLD"},
-            body="Old body.",
-        )
+        # Write enough rules to exceed threshold
+        paths = _write_n_rules(claude_dir, CACHE_MIN_RULES)
 
         # First load — populates cache
         rules = load_rules()
-        assert len(rules) == 1
-        assert rules[0].pattern == "OLD"
+        assert len(rules) == CACHE_MIN_RULES
+        mutable = [r for r in rules if r.name == "rule-00"][0]
+        assert mutable.pattern == "pat-0"
 
-        # Overwrite with pattern "NEW" and ensure mtime changes
+        # Overwrite first rule with new pattern and ensure mtime changes
         time.sleep(0.05)
         write_rule(
             claude_dir,
-            "hookify.mutable.local.md",
-            {"name": "mutable", "enabled": True, "event": "bash", "pattern": "NEW"},
-            body="New body.",
+            "hookify.rule-00.local.md",
+            {"name": "rule-00", "enabled": True, "event": "bash", "pattern": "CHANGED"},
+            body="Changed body.",
         )
-        os.utime(str(rule_path), None)  # bump mtime to now
+        os.utime(str(paths[0]), None)
 
         # Second load — cache should be invalidated
         rules = load_rules()
-        assert len(rules) == 1
-        assert rules[0].pattern == "NEW"
-        assert rules[0].message == "New body."
+        changed = [r for r in rules if r.name == "rule-00"][0]
+        assert changed.pattern == "CHANGED"
+        assert changed.message == "Changed body."
 
 
 # ---------------------------------------------------------------------------
@@ -136,29 +146,24 @@ class TestCacheInvalidatesOnFileAdded:
         _setup_plugin_root(tmp_path, monkeypatch)
         claude_dir = _project_claude_dir(isolated_env)
 
-        # Write first rule
-        write_rule(
-            claude_dir,
-            "hookify.first-rule.local.md",
-            {"name": "first-rule", "enabled": True, "event": "bash", "pattern": "echo"},
-            body="First rule.",
-        )
+        # Write enough rules to exceed threshold
+        _write_n_rules(claude_dir, CACHE_MIN_RULES)
 
         # First load — populates cache
         rules = load_rules()
-        assert len(rules) == 1
-        assert rules[0].name == "first-rule"
+        assert len(rules) == CACHE_MIN_RULES
 
-        # Add a second rule file
+        # Add one more rule file
         time.sleep(0.05)
         write_rule(
             claude_dir,
-            "hookify.second-rule.local.md",
-            {"name": "second-rule", "enabled": True, "event": "file", "pattern": "TODO"},
-            body="Second rule.",
+            "hookify.extra-rule.local.md",
+            {"name": "extra-rule", "enabled": True, "event": "file", "pattern": "TODO"},
+            body="Extra rule.",
         )
 
-        # Second load — both rules should be returned
+        # Second load — new rule should be included
         rules = load_rules()
         names = {r.name for r in rules}
-        assert names == {"first-rule", "second-rule"}
+        assert "extra-rule" in names
+        assert len(rules) == CACHE_MIN_RULES + 1

@@ -317,8 +317,17 @@ def load_rules(event: str | None = None) -> list[Rule]:
         save_to_cache,
     )
 
+    CACHE_MIN_RULES = 5
+
     # Bypass mode: skip cache entirely
     if is_bypass_enabled():
+        rules = _parse_and_merge_rules()
+        return _filter_by_event(rules, event)
+
+    current_mtimes = _current_source_mtimes()
+
+    # Small rule sets are faster without the cache overhead
+    if len(current_mtimes) < CACHE_MIN_RULES:
         rules = _parse_and_merge_rules()
         return _filter_by_event(rules, event)
 
@@ -328,7 +337,6 @@ def load_rules(event: str | None = None) -> list[Rule]:
     global_dir = dirs[-1]  # same as project_dir when CWD == $HOME
 
     cp = cache_path_for(project_dir, global_dir)
-    current_mtimes = _current_source_mtimes()
 
     # Try loading from cache
     cached = load_from_cache(cp)
