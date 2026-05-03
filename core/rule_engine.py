@@ -47,13 +47,13 @@ class RuleEngine:
             Response dict with systemMessage, hookSpecificOutput, etc.
             Empty dict {} if no rules match.
         """
-        hook_event = input_data.get('hook_event_name', '')
+        hook_event = input_data.get("hook_event_name", "")
         blocking_rules = []
         warning_rules = []
 
         for rule in rules:
             if self._rule_matches(rule, input_data):
-                if rule.action == 'block':
+                if rule.action == "block":
                     blocking_rules.append(rule)
                 else:
                     warning_rules.append(rule)
@@ -64,33 +64,29 @@ class RuleEngine:
             combined_message = "\n\n".join(messages)
 
             # Use appropriate blocking format based on event type
-            if hook_event == 'Stop':
+            if hook_event == "Stop":
                 return {
                     "decision": "block",
                     "reason": combined_message,
-                    "systemMessage": combined_message
+                    "systemMessage": combined_message,
                 }
-            elif hook_event in ['PreToolUse', 'PostToolUse']:
+            elif hook_event in ["PreToolUse", "PostToolUse"]:
                 return {
                     "hookSpecificOutput": {
                         "hookEventName": hook_event,
                         "permissionDecision": "deny",
                         "permissionDecisionReason": combined_message,
                     },
-                    "systemMessage": combined_message
+                    "systemMessage": combined_message,
                 }
             else:
                 # For other events, just show message
-                return {
-                    "systemMessage": combined_message
-                }
+                return {"systemMessage": combined_message}
 
         # If only warnings, show them but allow operation
         if warning_rules:
             messages = [f"**[{r.name}]**\n{r.message}" for r in warning_rules]
-            return {
-                "systemMessage": "\n\n".join(messages)
-            }
+            return {"systemMessage": "\n\n".join(messages)}
 
         # No matches - allow operation
         return {}
@@ -106,8 +102,8 @@ class RuleEngine:
             True if rule matches, False otherwise
         """
         # Extract tool information
-        tool_name = input_data.get('tool_name', '')
-        tool_input = input_data.get('tool_input', {})
+        tool_name = input_data.get("tool_name", "")
+        tool_input = input_data.get("tool_input", {})
 
         # Check tool matcher if specified
         if rule.tool_matcher and not self._matches_tool(rule.tool_matcher, tool_name):
@@ -135,15 +131,20 @@ class RuleEngine:
         Returns:
             True if matches
         """
-        if matcher == '*':
+        if matcher == "*":
             return True
 
         # Split on | for OR matching
-        patterns = matcher.split('|')
+        patterns = matcher.split("|")
         return tool_name in patterns
 
-    def _check_condition(self, condition: Condition, tool_name: str,
-                        tool_input: dict[str, Any], input_data: dict[str, Any] = None) -> bool:
+    def _check_condition(
+        self,
+        condition: Condition,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        input_data: dict[str, Any] = None,
+    ) -> bool:
         """Check if a single condition matches.
 
         Args:
@@ -164,26 +165,31 @@ class RuleEngine:
         operator = condition.operator
         pattern = condition.pattern
 
-        if operator == 'regex_match':
+        if operator == "regex_match":
             return self._regex_match(pattern, field_value)
-        elif operator == 'not_regex_match':
+        elif operator == "not_regex_match":
             return not self._regex_match(pattern, field_value)
-        elif operator == 'contains':
+        elif operator == "contains":
             return pattern in field_value
-        elif operator == 'equals':
+        elif operator == "equals":
             return pattern == field_value
-        elif operator == 'not_contains':
+        elif operator == "not_contains":
             return pattern not in field_value
-        elif operator == 'starts_with':
+        elif operator == "starts_with":
             return field_value.startswith(pattern)
-        elif operator == 'ends_with':
+        elif operator == "ends_with":
             return field_value.endswith(pattern)
         else:
             # Unknown operator
             return False
 
-    def _extract_field(self, field: str, tool_name: str,
-                      tool_input: dict[str, Any], input_data: dict[str, Any] = None) -> str | None:
+    def _extract_field(
+        self,
+        field: str,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        input_data: dict[str, Any] = None,
+    ) -> str | None:
         """Extract field value from tool input or hook input data.
 
         Args:
@@ -205,55 +211,67 @@ class RuleEngine:
         # For Stop events and other non-tool events, check input_data
         if input_data:
             # Stop event specific fields
-            if field == 'reason':
-                return input_data.get('reason', '')
-            elif field == 'transcript':
+            if field == "reason":
+                return input_data.get("reason", "")
+            elif field == "transcript":
                 # Read transcript file if path provided
-                transcript_path = input_data.get('transcript_path')
+                transcript_path = input_data.get("transcript_path")
                 if transcript_path:
                     try:
                         with open(transcript_path) as f:
                             return f.read()
                     except FileNotFoundError:
-                        print(f"Warning: Transcript file not found: {transcript_path}", file=sys.stderr)
-                        return ''
+                        print(
+                            f"Warning: Transcript file not found: {transcript_path}",
+                            file=sys.stderr,
+                        )
+                        return ""
                     except PermissionError:
-                        print(f"Warning: Permission denied reading transcript: {transcript_path}", file=sys.stderr)
-                        return ''
+                        print(
+                            f"Warning: Permission denied reading transcript: {transcript_path}",
+                            file=sys.stderr,
+                        )
+                        return ""
                     except OSError as e:
-                        print(f"Warning: Error reading transcript {transcript_path}: {e}", file=sys.stderr)
-                        return ''
+                        print(
+                            f"Warning: Error reading transcript {transcript_path}: {e}",
+                            file=sys.stderr,
+                        )
+                        return ""
                     except UnicodeDecodeError as e:
-                        print(f"Warning: Encoding error in transcript {transcript_path}: {e}", file=sys.stderr)
-                        return ''
-            elif field == 'user_prompt':
+                        print(
+                            f"Warning: Encoding error in transcript {transcript_path}: {e}",
+                            file=sys.stderr,
+                        )
+                        return ""
+            elif field == "user_prompt":
                 # For UserPromptSubmit events
-                return input_data.get('user_prompt', '')
+                return input_data.get("user_prompt", "")
 
         # Handle special cases by tool type
-        if tool_name == 'Bash':
-            if field == 'command':
-                return tool_input.get('command', '')
+        if tool_name == "Bash":
+            if field == "command":
+                return tool_input.get("command", "")
 
-        elif tool_name in ['Write', 'Edit', 'Update']:
-            if field == 'content':
+        elif tool_name in ["Write", "Edit", "Update"]:
+            if field == "content":
                 # Write uses 'content', Edit has 'new_string'
-                return tool_input.get('content') or tool_input.get('new_string', '')
-            elif field == 'new_text' or field == 'new_string':
+                return tool_input.get("content") or tool_input.get("new_string", "")
+            elif field == "new_text" or field == "new_string":
                 # Write sends 'content', Edit sends 'new_string' — fall back
-                return tool_input.get('new_string') or tool_input.get('content', '')
-            elif field == 'old_text' or field == 'old_string':
-                return tool_input.get('old_string', '')
-            elif field == 'file_path':
-                return tool_input.get('file_path', '')
+                return tool_input.get("new_string") or tool_input.get("content", "")
+            elif field == "old_text" or field == "old_string":
+                return tool_input.get("old_string", "")
+            elif field == "file_path":
+                return tool_input.get("file_path", "")
 
-        elif tool_name == 'MultiEdit':
-            if field == 'file_path':
-                return tool_input.get('file_path', '')
-            elif field in ['new_text', 'content']:
+        elif tool_name == "MultiEdit":
+            if field == "file_path":
+                return tool_input.get("file_path", "")
+            elif field in ["new_text", "content"]:
                 # Concatenate all edits
-                edits = tool_input.get('edits', [])
-                return ' '.join(e.get('new_string', '') for e in edits)
+                edits = tool_input.get("edits", [])
+                return " ".join(e.get("new_string", "") for e in edits)
 
         return None
 
@@ -278,7 +296,7 @@ class RuleEngine:
 
 
 # For testing
-if __name__ == '__main__':
+if __name__ == "__main__":
     from core.config_loader import Condition, Rule
 
     # Test rule evaluation
@@ -286,32 +304,20 @@ if __name__ == '__main__':
         name="test-rm",
         enabled=True,
         event="bash",
-        conditions=[
-            Condition(field="command", operator="regex_match", pattern=r"rm\s+-rf")
-        ],
-        message="Dangerous rm command!"
+        conditions=[Condition(field="command", operator="regex_match", pattern=r"rm\s+-rf")],
+        message="Dangerous rm command!",
     )
 
     engine = RuleEngine()
 
     # Test matching input
-    test_input = {
-        "tool_name": "Bash",
-        "tool_input": {
-            "command": "rm -rf /tmp/test"
-        }
-    }
+    test_input = {"tool_name": "Bash", "tool_input": {"command": "rm -rf /tmp/test"}}
 
     result = engine.evaluate_rules([rule], test_input)
     print("Match result:", result)
 
     # Test non-matching input
-    test_input2 = {
-        "tool_name": "Bash",
-        "tool_input": {
-            "command": "ls -la"
-        }
-    }
+    test_input2 = {"tool_name": "Bash", "tool_input": {"command": "ls -la"}}
 
     result2 = engine.evaluate_rules([rule], test_input2)
     print("Non-match result:", result2)

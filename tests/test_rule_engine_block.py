@@ -1,6 +1,7 @@
 """Tests for permissionDecisionReason in block-rule output."""
+
+from core.config_loader import Condition, Rule
 from core.rule_engine import RuleEngine
-from core.config_loader import Rule, Condition
 
 
 def test_block_rule_includes_permission_decision_reason():

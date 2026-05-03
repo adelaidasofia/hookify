@@ -203,12 +203,16 @@ class TestInvalidation:
 
     def test_load_returns_none_on_wrong_schema_version(self, tmp_path):
         bad_file = tmp_path / "old.json"
-        bad_file.write_text(json.dumps({
-            "version": 9999,
-            "schema_revision": "future",
-            "sources": {},
-            "rules": [],
-        }))
+        bad_file.write_text(
+            json.dumps(
+                {
+                    "version": 9999,
+                    "schema_revision": "future",
+                    "sources": {},
+                    "rules": [],
+                }
+            )
+        )
         result = load_from_cache(str(bad_file))
         assert result is None
 
@@ -220,23 +224,31 @@ class TestInvalidation:
 
     def test_load_returns_none_on_bad_sources_type(self, tmp_path):
         bad_file = tmp_path / "bad_sources.json"
-        bad_file.write_text(json.dumps({
-            "version": CACHE_SCHEMA_VERSION,
-            "schema_revision": SCHEMA_REVISION,
-            "sources": "not-a-dict",
-            "rules": [],
-        }))
+        bad_file.write_text(
+            json.dumps(
+                {
+                    "version": CACHE_SCHEMA_VERSION,
+                    "schema_revision": SCHEMA_REVISION,
+                    "sources": "not-a-dict",
+                    "rules": [],
+                }
+            )
+        )
         result = load_from_cache(str(bad_file))
         assert result is None
 
     def test_load_returns_none_on_bad_rules_type(self, tmp_path):
         bad_file = tmp_path / "bad_rules.json"
-        bad_file.write_text(json.dumps({
-            "version": CACHE_SCHEMA_VERSION,
-            "schema_revision": SCHEMA_REVISION,
-            "sources": {},
-            "rules": "not-a-list",
-        }))
+        bad_file.write_text(
+            json.dumps(
+                {
+                    "version": CACHE_SCHEMA_VERSION,
+                    "schema_revision": SCHEMA_REVISION,
+                    "sources": {},
+                    "rules": "not-a-list",
+                }
+            )
+        )
         result = load_from_cache(str(bad_file))
         assert result is None
 

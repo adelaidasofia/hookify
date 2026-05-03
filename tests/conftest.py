@@ -1,6 +1,5 @@
 """Shared pytest fixtures for hookify tests."""
 
-import os
 import sys
 from pathlib import Path
 

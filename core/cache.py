@@ -61,7 +61,9 @@ def cache_path_for(project_dir: str, global_dir: str) -> str:
     if plugin_root:
         cache_dir = os.path.join(plugin_root, ".cache")
     else:
-        xdg_cache = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
+        xdg_cache = os.environ.get(
+            "XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache")
+        )
         cache_dir = os.path.join(xdg_cache, "hookify")
 
     return os.path.join(cache_dir, f"{key}.json")

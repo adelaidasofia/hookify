@@ -11,6 +11,7 @@ from tests.conftest import write_rule
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _project_claude_dir(env):
     """Return the .claude directory inside the project."""
     return env["project"] / ".claude"
@@ -24,6 +25,7 @@ def _global_claude_dir(env):
 # ---------------------------------------------------------------------------
 # TestProjectScopeStillWorks
 # ---------------------------------------------------------------------------
+
 
 class TestProjectScopeStillWorks:
     """Project-only rules load; no rules anywhere returns empty."""
@@ -56,6 +58,7 @@ class TestProjectScopeStillWorks:
 # ---------------------------------------------------------------------------
 # TestGlobalScopeLoads
 # ---------------------------------------------------------------------------
+
 
 class TestGlobalScopeLoads:
     """Global rules load from ~/.claude/ regardless of CWD."""
@@ -93,6 +96,7 @@ class TestGlobalScopeLoads:
 # ---------------------------------------------------------------------------
 # TestProjectOverridesGlobal
 # ---------------------------------------------------------------------------
+
 
 class TestProjectOverridesGlobal:
     """Project rule wins when names match; message body confirms the right one."""
@@ -144,6 +148,7 @@ class TestProjectOverridesGlobal:
 # ---------------------------------------------------------------------------
 # TestDisabledProjectSuppressesGlobal
 # ---------------------------------------------------------------------------
+
 
 class TestDisabledProjectSuppressesGlobal:
     """Disabled project rule with matching name blocks global; no-match is no-op."""
@@ -212,6 +217,7 @@ class TestDisabledProjectSuppressesGlobal:
 # ---------------------------------------------------------------------------
 # TestEdgeCases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """CWD == $HOME, missing dirs, event filter across scopes."""

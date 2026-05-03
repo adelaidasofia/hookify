@@ -5,12 +5,12 @@ This script is called by Claude Code after a tool executes.
 It reads .claude/hookify.*.local.md files and evaluates rules.
 """
 
+import json
 import os
 import sys
-import json
 
 # Add plugin root to Python path for imports
-PLUGIN_ROOT = os.environ.get('CLAUDE_PLUGIN_ROOT')
+PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT")
 if PLUGIN_ROOT and PLUGIN_ROOT not in sys.path:
     sys.path.insert(0, PLUGIN_ROOT)
 
@@ -30,14 +30,14 @@ def main():
         input_data = json.load(sys.stdin)
 
         # Determine event type based on tool
-        tool_name = input_data.get('tool_name', '')
+        tool_name = input_data.get("tool_name", "")
         event = None
-        if tool_name == 'Bash':
-            event = 'bash'
-        elif tool_name in ['Edit', 'Write', 'MultiEdit', 'Update']:
-            event = 'file'
-        elif tool_name in ['Read', 'Glob', 'Grep', 'LS']:
-            event = 'read'
+        if tool_name == "Bash":
+            event = "bash"
+        elif tool_name in ["Edit", "Write", "MultiEdit", "Update"]:
+            event = "file"
+        elif tool_name in ["Read", "Glob", "Grep", "LS"]:
+            event = "read"
 
         # Load rules
         rules = load_rules(event=event)
@@ -50,9 +50,7 @@ def main():
         print(json.dumps(result), file=sys.stdout)
 
     except Exception as e:
-        error_output = {
-            "systemMessage": f"Hookify error: {str(e)}"
-        }
+        error_output = {"systemMessage": f"Hookify error: {str(e)}"}
         print(json.dumps(error_output), file=sys.stdout)
 
     finally:
@@ -60,5 +58,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
