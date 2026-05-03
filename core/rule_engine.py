@@ -74,7 +74,8 @@ class RuleEngine:
                 return {
                     "hookSpecificOutput": {
                         "hookEventName": hook_event,
-                        "permissionDecision": "deny"
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": combined_message,
                     },
                     "systemMessage": combined_message
                 }
@@ -232,7 +233,7 @@ class RuleEngine:
             if field == 'command':
                 return tool_input.get('command', '')
 
-        elif tool_name in ['Write', 'Edit']:
+        elif tool_name in ['Write', 'Edit', 'Update']:
             if field == 'content':
                 # Write uses 'content', Edit has 'new_string'
                 return tool_input.get('content') or tool_input.get('new_string', '')
