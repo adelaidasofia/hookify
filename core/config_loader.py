@@ -4,12 +4,13 @@
 Loads and parses .claude/hookify.*.local.md files.
 """
 
+from __future__ import annotations
+
+import glob
 import os
 import sys
-import glob
-import re
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -20,7 +21,7 @@ class Condition:
     pattern: str  # Pattern to match
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Condition':
+    def from_dict(cls, data: dict[str, Any]) -> Condition:
         """Create Condition from dict."""
         return cls(
             field=data.get('field', ''),
@@ -35,14 +36,14 @@ class Rule:
     name: str
     enabled: bool
     event: str  # "bash", "file", "stop", "all", etc.
-    pattern: Optional[str] = None  # Simple pattern (legacy)
-    conditions: List[Condition] = field(default_factory=list)
+    pattern: str | None = None  # Simple pattern (legacy)
+    conditions: list[Condition] = field(default_factory=list)
     action: str = "warn"  # "warn" or "block" (future)
-    tool_matcher: Optional[str] = None  # Override tool matching
+    tool_matcher: str | None = None  # Override tool matching
     message: str = ""  # Message body from markdown
 
     @classmethod
-    def from_dict(cls, frontmatter: Dict[str, Any], message: str) -> 'Rule':
+    def from_dict(cls, frontmatter: dict[str, Any], message: str) -> Rule:
         """Create Rule from frontmatter dict and message body."""
         # Handle both simple pattern and complex conditions
         conditions = []
@@ -84,7 +85,7 @@ class Rule:
         )
 
 
-def extract_frontmatter(content: str) -> tuple[Dict[str, Any], str]:
+def extract_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     """Extract YAML frontmatter and message body from markdown.
 
     Returns (frontmatter_dict, message_body).
@@ -195,8 +196,26 @@ def extract_frontmatter(content: str) -> tuple[Dict[str, Any], str]:
     return frontmatter, message
 
 
-def load_rules(event: Optional[str] = None) -> List[Rule]:
-    """Load all hookify rules from .claude directory.
+def _resolve_rule_dirs() -> list[str]:
+    """Return the list of .claude directories to search for rule files.
+
+    Order: project-local first, then user-global. If they resolve to the same
+    real path (e.g. CWD == $HOME), return only one entry to avoid double-loading.
+    """
+    project_dir = os.path.realpath(os.path.join(os.getcwd(), '.claude'))
+    global_dir = os.path.realpath(os.path.join(os.path.expanduser('~'), '.claude'))
+
+    if project_dir == global_dir:
+        return [project_dir]
+    return [project_dir, global_dir]
+
+
+def load_rules(event: str | None = None) -> list[Rule]:
+    """Load hookify rules from project-local and user-global .claude directories.
+
+    Searches <cwd>/.claude/ first, then ~/.claude/. Project rules take
+    precedence over global rules with the same ``name``. A project rule with
+    ``enabled: false`` suppresses a global rule with the same name.
 
     Args:
         event: Optional event filter ("bash", "file", "stop", etc.)
@@ -204,51 +223,61 @@ def load_rules(event: Optional[str] = None) -> List[Rule]:
     Returns:
         List of enabled Rule objects matching the event.
     """
-    rules = []
+    by_name: dict[str, Rule] = {}
+    suppressed: set = set()
 
-    # Find all hookify.*.local.md files
-    pattern = os.path.join('.claude', 'hookify.*.local.md')
-    files = glob.glob(pattern)
+    for rule_dir in _resolve_rule_dirs():
+        pattern = os.path.join(rule_dir, 'hookify.*.local.md')
+        files = sorted(glob.glob(pattern))
 
-    for file_path in files:
-        try:
-            rule = load_rule_file(file_path)
-            if not rule:
-                continue
-
-            # Filter by event if specified
-            if event:
-                if rule.event != 'all' and rule.event != event:
+        for file_path in files:
+            try:
+                rule = load_rule_file(file_path)
+                if not rule:
                     continue
 
-            # Only include enabled rules
-            if rule.enabled:
-                rules.append(rule)
+                # Filter by event if specified
+                if event and rule.event != 'all' and rule.event != event:
+                    continue
 
-        except (IOError, OSError, PermissionError) as e:
-            # File I/O errors - log and continue
-            print(f"Warning: Failed to read {file_path}: {e}", file=sys.stderr)
-            continue
-        except (ValueError, KeyError, AttributeError, TypeError) as e:
-            # Parsing errors - log and continue
-            print(f"Warning: Failed to parse {file_path}: {e}", file=sys.stderr)
-            continue
-        except Exception as e:
-            # Unexpected errors - log with type details
-            print(f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}", file=sys.stderr)
-            continue
+                # Skip if name already seen (project wins) or suppressed
+                if rule.name in by_name or rule.name in suppressed:
+                    continue
 
-    return rules
+                # Disabled rule: record suppression but don't include
+                if not rule.enabled:
+                    suppressed.add(rule.name)
+                    continue
+
+                by_name[rule.name] = rule
+
+            except (OSError, PermissionError) as e:
+                # File I/O errors - log and continue
+                print(f"Warning: Failed to read {file_path}: {e}", file=sys.stderr)
+                continue
+            except (ValueError, KeyError, AttributeError, TypeError) as e:
+                # Parsing errors - log and continue
+                print(f"Warning: Failed to parse {file_path}: {e}", file=sys.stderr)
+                continue
+            except Exception as e:
+                # Unexpected errors - log with type details
+                print(
+                    f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}",
+                    file=sys.stderr,
+                )
+                continue
+
+    return list(by_name.values())
 
 
-def load_rule_file(file_path: str) -> Optional[Rule]:
+def load_rule_file(file_path: str) -> Rule | None:
     """Load a single rule file.
 
     Returns:
         Rule object or None if file is invalid.
     """
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             content = f.read()
 
         frontmatter, message = extract_frontmatter(content)
@@ -260,7 +289,7 @@ def load_rule_file(file_path: str) -> Optional[Rule]:
         rule = Rule.from_dict(frontmatter, message)
         return rule
 
-    except (IOError, OSError, PermissionError) as e:
+    except (OSError, PermissionError) as e:
         print(f"Error: Cannot read {file_path}: {e}", file=sys.stderr)
         return None
     except (ValueError, KeyError, AttributeError, TypeError) as e:
