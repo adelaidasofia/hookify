@@ -1,0 +1,15 @@
+{
+  "name": "hookify",
+  "owner": {
+    "name": "Chris Irving"
+  },
+  "plugins": [
+    {
+      "name": "hookify",
+      "description": "Patched fork of Anthropic's hookify with bug fixes (global rules, Write tool) and JSON rule caching",
+      "source": ".",
+      "category": "productivity",
+      "homepage": "https://github.com/Chris-Irving/hookify"
+    }
+  ]
+}
