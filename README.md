@@ -1,6 +1,6 @@
 # hookify (patched fork)
 
-Patched fork of [Anthropic's hookify](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify) Claude Code plugin with bug fixes, a JSON rule cache, and community improvements. Maintained at [Chris-Irving/hookify](https://github.com/Chris-Irving/hookify) -- pending upstream merge.
+Patched fork of [Anthropic's hookify](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify) Claude Code plugin with bug fixes, a JSON rule cache, and community improvements. Maintained at [reyequis/hookify](https://github.com/reyequis/hookify) -- pending upstream merge.
 
 ## What's fixed (v0.2.0)
 
@@ -36,7 +36,7 @@ The following improvements are cherry-picked from [adrozdenko/hookify-plus](http
 ## Install
 
 ```
-/plugin marketplace add Chris-Irving/hookify
+/plugin marketplace add reyequis/hookify
 /plugin install hookify@hookify
 /reload-plugins
 ```

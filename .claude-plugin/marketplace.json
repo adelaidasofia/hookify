@@ -9,7 +9,7 @@
       "description": "Patched fork of Anthropic's hookify with bug fixes (global rules, Write tool) and JSON rule caching",
       "source": ".",
       "category": "productivity",
-      "homepage": "https://github.com/Chris-Irving/hookify"
+      "homepage": "https://github.com/reyequis/hookify"
     }
   ]
 }

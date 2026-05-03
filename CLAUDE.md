@@ -55,4 +55,5 @@ docs/plans/             — design doc, specs, implementation plan
   `docs/plans/2026-05-03-spec-json-cache.md`
 - Upstream: https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify
 - Bug #2 canonical thread: https://github.com/anthropics/claude-plugins-official/issues/503
+- Bug #3 upstream issue: https://github.com/anthropics/claude-plugins-official/issues/1694
 - hookify-plus: https://github.com/adrozdenko/hookify-plus
