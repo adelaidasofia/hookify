@@ -3,7 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
 .Python
+.ruff_cache/
 
 # Virtual environments
 venv/
@@ -24,6 +26,9 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Hookify cache
+.cache/
 
 # Local configuration (should not be committed)
 .claude/*.local.md
