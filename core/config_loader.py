@@ -23,10 +23,13 @@ class Condition:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Condition:
         """Create Condition from dict."""
+        pattern = data.get('pattern')
+        if pattern is None:
+            pattern = data.get('value', '')
         return cls(
             field=data.get('field', ''),
             operator=data.get('operator', 'regex_match'),
-            pattern=data.get('pattern', '')
+            pattern=pattern,
         )
 
 
