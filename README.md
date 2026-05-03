@@ -8,7 +8,7 @@ Patched fork of [Anthropic's hookify](https://github.com/anthropics/claude-plugi
 
 - **Global rules never load (bug #2)** -- The official plugin uses a relative glob (`os.path.join('.claude', ...)`) that only finds rules when CWD happens to be the project root. Rules in `~/.claude/` (user scope) are silently ignored. Fixed by resolving paths from `CLAUDE_PROJECT_DIR` and `~/.claude/` explicitly. See [issue #503](https://github.com/anthropics/claude-plugins-official/issues/503).
 
-- **Write tool bypasses file rules (bug #3)** -- Rules with `event: file` only check `new_string` (the Edit tool's input key). The Write tool sends `content` instead, so its payload is never matched and `action: block` rules silently fail. Fixed by falling back through `content`, `new_string`, and `new_text` for all file-event tools. Upstream issue pending.
+- **Write tool bypasses file rules (bug #3)** -- Rules with `event: file` only check `new_string` (the Edit tool's input key). The Write tool sends `content` instead, so its payload is never matched and `action: block` rules silently fail. Fixed by falling back through `content`, `new_string`, and `new_text` for all file-event tools. See [issue #1694](https://github.com/anthropics/claude-plugins-official/issues/1694).
 
 ### JSON rule cache
 
