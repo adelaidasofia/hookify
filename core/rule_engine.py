@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Rule evaluation engine for hookify plugin."""
 
+from __future__ import annotations
+
 import re
 import sys
 from functools import lru_cache
-from typing import List, Dict, Any, Optional
+from typing import Any
 
-# Import from local module
-from core.config_loader import Rule, Condition
+from core.config_loader import Condition, Rule
 
 
 # Cache compiled regexes (max 128 patterns)
@@ -32,7 +33,7 @@ class RuleEngine:
         # No need for instance cache anymore - using global lru_cache
         pass
 
-    def evaluate_rules(self, rules: List[Rule], input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate_rules(self, rules: list[Rule], input_data: dict[str, Any]) -> dict[str, Any]:
         """Evaluate all rules and return combined results.
 
         Checks all rules and accumulates matches. Blocking rules take priority
@@ -93,7 +94,7 @@ class RuleEngine:
         # No matches - allow operation
         return {}
 
-    def _rule_matches(self, rule: Rule, input_data: Dict[str, Any]) -> bool:
+    def _rule_matches(self, rule: Rule, input_data: dict[str, Any]) -> bool:
         """Check if rule matches input data.
 
         Args:
@@ -108,9 +109,8 @@ class RuleEngine:
         tool_input = input_data.get('tool_input', {})
 
         # Check tool matcher if specified
-        if rule.tool_matcher:
-            if not self._matches_tool(rule.tool_matcher, tool_name):
-                return False
+        if rule.tool_matcher and not self._matches_tool(rule.tool_matcher, tool_name):
+            return False
 
         # If no conditions, don't match
         # (Rules must have at least one condition to be valid)
@@ -142,7 +142,7 @@ class RuleEngine:
         return tool_name in patterns
 
     def _check_condition(self, condition: Condition, tool_name: str,
-                        tool_input: Dict[str, Any], input_data: Dict[str, Any] = None) -> bool:
+                        tool_input: dict[str, Any], input_data: dict[str, Any] = None) -> bool:
         """Check if a single condition matches.
 
         Args:
@@ -180,7 +180,7 @@ class RuleEngine:
             return False
 
     def _extract_field(self, field: str, tool_name: str,
-                      tool_input: Dict[str, Any], input_data: Dict[str, Any] = None) -> Optional[str]:
+                      tool_input: dict[str, Any], input_data: dict[str, Any] = None) -> str | None:
         """Extract field value from tool input or hook input data.
 
         Args:
@@ -209,7 +209,7 @@ class RuleEngine:
                 transcript_path = input_data.get('transcript_path')
                 if transcript_path:
                     try:
-                        with open(transcript_path, 'r') as f:
+                        with open(transcript_path) as f:
                             return f.read()
                     except FileNotFoundError:
                         print(f"Warning: Transcript file not found: {transcript_path}", file=sys.stderr)
@@ -217,7 +217,7 @@ class RuleEngine:
                     except PermissionError:
                         print(f"Warning: Permission denied reading transcript: {transcript_path}", file=sys.stderr)
                         return ''
-                    except (IOError, OSError) as e:
+                    except OSError as e:
                         print(f"Warning: Error reading transcript {transcript_path}: {e}", file=sys.stderr)
                         return ''
                     except UnicodeDecodeError as e:
@@ -237,7 +237,8 @@ class RuleEngine:
                 # Write uses 'content', Edit has 'new_string'
                 return tool_input.get('content') or tool_input.get('new_string', '')
             elif field == 'new_text' or field == 'new_string':
-                return tool_input.get('new_string', '')
+                # Write sends 'content', Edit sends 'new_string' — fall back
+                return tool_input.get('new_string') or tool_input.get('content', '')
             elif field == 'old_text' or field == 'old_string':
                 return tool_input.get('old_string', '')
             elif field == 'file_path':
