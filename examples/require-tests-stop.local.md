@@ -5,8 +5,8 @@ event: stop
 action: block
 conditions:
   - field: transcript
-    operator: not_contains
-    pattern: npm test|pytest|cargo test
+    operator: not_regex_match
+    pattern: (npm test|pytest|cargo test|vitest|jest)
 ---
 
 **Tests not detected in transcript!**
@@ -17,6 +17,8 @@ Look for test commands like:
 - `npm test`
 - `pytest`
 - `cargo test`
+- `vitest`
+- `jest`
 
 **Note:** This rule blocks stopping if no test commands appear in the transcript.
 Enable this rule only when you want strict test enforcement.
