@@ -143,7 +143,7 @@ class RuleEngine:
         condition: Condition,
         tool_name: str,
         tool_input: dict[str, Any],
-        input_data: dict[str, Any] = None,
+        input_data: dict[str, Any] | None = None,
     ) -> bool:
         """Check if a single condition matches.
 
@@ -188,7 +188,7 @@ class RuleEngine:
         field: str,
         tool_name: str,
         tool_input: dict[str, Any],
-        input_data: dict[str, Any] = None,
+        input_data: dict[str, Any] | None = None,
     ) -> str | None:
         """Extract field value from tool input or hook input data.
 
@@ -297,8 +297,6 @@ class RuleEngine:
 
 # For testing
 if __name__ == "__main__":
-    from core.config_loader import Condition, Rule
-
     # Test rule evaluation
     rule = Rule(
         name="test-rm",

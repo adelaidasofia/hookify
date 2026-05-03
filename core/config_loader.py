@@ -12,6 +12,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any
 
+CACHE_MIN_RULES = 5
+
 
 @dataclass
 class Condition:
@@ -84,6 +86,17 @@ class Rule:
             tool_matcher=frontmatter.get("tool_matcher"),
             message=message.strip(),
         )
+
+
+def event_for_tool(tool_name: str) -> str | None:
+    """Map a Claude Code tool name to a hookify event type."""
+    if tool_name == "Bash":
+        return "bash"
+    if tool_name in ("Edit", "Write", "MultiEdit", "Update"):
+        return "file"
+    if tool_name in ("Read", "Glob", "Grep", "LS"):
+        return "read"
+    return None
 
 
 def extract_frontmatter(content: str) -> tuple[dict[str, Any], str]:
@@ -238,44 +251,25 @@ def _parse_and_merge_rules() -> list[Rule]:
     Returns all enabled rules (no event filtering).
     """
     by_name: dict[str, Rule] = {}
-    suppressed: set = set()
+    suppressed: set[str] = set()
 
     for rule_dir in _resolve_rule_dirs():
         pattern = os.path.join(rule_dir, "hookify.*.local.md")
         files = sorted(glob.glob(pattern))
 
         for file_path in files:
-            try:
-                rule = load_rule_file(file_path)
-                if not rule:
-                    continue
-
-                # Skip if name already seen (project wins) or suppressed
-                if rule.name in by_name or rule.name in suppressed:
-                    continue
-
-                # Disabled rule: record suppression but don't include
-                if not rule.enabled:
-                    suppressed.add(rule.name)
-                    continue
-
-                by_name[rule.name] = rule
-
-            except (OSError, PermissionError) as e:
-                # File I/O errors - log and continue
-                print(f"Warning: Failed to read {file_path}: {e}", file=sys.stderr)
+            rule = load_rule_file(file_path)
+            if not rule:
                 continue
-            except (ValueError, KeyError, AttributeError, TypeError) as e:
-                # Parsing errors - log and continue
-                print(f"Warning: Failed to parse {file_path}: {e}", file=sys.stderr)
+
+            if rule.name in by_name or rule.name in suppressed:
                 continue
-            except Exception as e:
-                # Unexpected errors - log with type details
-                print(
-                    f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}",
-                    file=sys.stderr,
-                )
+
+            if not rule.enabled:
+                suppressed.add(rule.name)
                 continue
+
+            by_name[rule.name] = rule
 
     return list(by_name.values())
 
@@ -288,7 +282,7 @@ def _filter_by_event(rules: list[Rule], event: str | None) -> list[Rule]:
     """
     if event is None:
         return rules
-    return [r for r in rules if r.event == "all" or r.event == event]
+    return [r for r in rules if r.event in ("all", event)]
 
 
 def load_rules(event: str | None = None) -> list[Rule]:
@@ -316,8 +310,6 @@ def load_rules(event: str | None = None) -> list[Rule]:
         load_from_cache,
         save_to_cache,
     )
-
-    CACHE_MIN_RULES = 5
 
     # Bypass mode: skip cache entirely
     if is_bypass_enabled():
@@ -373,7 +365,7 @@ def load_rule_file(file_path: str) -> Rule | None:
         rule = Rule.from_dict(frontmatter, message)
         return rule
 
-    except (OSError, PermissionError) as e:
+    except OSError as e:
         print(f"Error: Cannot read {file_path}: {e}", file=sys.stderr)
         return None
     except (ValueError, KeyError, AttributeError, TypeError) as e:
@@ -392,8 +384,6 @@ def load_rule_file(file_path: str) -> Rule | None:
 
 # For testing
 if __name__ == "__main__":
-    import sys
-
     # Test frontmatter parsing
     test_content = """---
 name: test-rule

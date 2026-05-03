@@ -15,7 +15,7 @@ if PLUGIN_ROOT and PLUGIN_ROOT not in sys.path:
     sys.path.insert(0, PLUGIN_ROOT)
 
 try:
-    from core.config_loader import load_rules
+    from core.config_loader import event_for_tool, load_rules
     from core.rule_engine import RuleEngine
 except ImportError as e:
     # If imports fail, allow operation and log error
@@ -31,16 +31,8 @@ def main():
         input_data = json.load(sys.stdin)
 
         # Determine event type for filtering
-        # For PreToolUse, we use tool_name to determine "bash" vs "file" event
         tool_name = input_data.get("tool_name", "")
-
-        event = None
-        if tool_name == "Bash":
-            event = "bash"
-        elif tool_name in ["Edit", "Write", "MultiEdit", "Update"]:
-            event = "file"
-        elif tool_name in ["Read", "Glob", "Grep", "LS"]:
-            event = "read"
+        event = event_for_tool(tool_name)
 
         # Load rules
         rules = load_rules(event=event)
