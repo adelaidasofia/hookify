@@ -36,6 +36,8 @@ def main():
             event = 'bash'
         elif tool_name in ['Edit', 'Write', 'MultiEdit', 'Update']:
             event = 'file'
+        elif tool_name in ['Read', 'Glob', 'Grep', 'LS']:
+            event = 'read'
 
         # Load rules
         rules = load_rules(event=event)
