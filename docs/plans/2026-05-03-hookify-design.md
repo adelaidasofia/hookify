@@ -23,7 +23,7 @@ the working version while we pitch the bug fixes upstream for merging.
 
 ## Distribution strategy
 
-- **Repo:** `Chris-Irving/hookify`, public on GitHub
+- **Repo:** `reyequis/hookify`, public on GitHub
 - **Plugin name:** `hookify` (matches upstream — clear lineage; no
   marketplace name conflict because plugin IDs are
   `<name>@<marketplace>`)
@@ -33,7 +33,7 @@ the working version while we pitch the bug fixes upstream for merging.
 - **Self-marketplacing:** repo includes `.claude-plugin/marketplace.json`
   so users install via:
   ```
-  /plugin marketplace add Chris-Irving/hookify
+  /plugin marketplace add reyequis/hookify
   /plugin install hookify@hookify
   ```
 - **Upstream patch route:** file detailed issues with proposed patches
@@ -214,7 +214,7 @@ before implementation:
 - [ ] `pytest` passes, `ruff` clean, CI green on `main`
 - [ ] README reflects fork status with install instructions, fix list,
       and links to upstream issues
-- [ ] `/plugin marketplace add Chris-Irving/hookify` then
+- [ ] `/plugin marketplace add reyequis/hookify` then
       `/plugin install hookify@hookify` works end-to-end on a clean
       machine
 

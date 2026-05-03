@@ -354,7 +354,7 @@ This is also a candidate for upstream patch."
       "description": "Patched fork of Anthropic's hookify with bug fixes (global rules, Write tool) and JSON rule caching",
       "source": ".",
       "category": "productivity",
-      "homepage": "https://github.com/Chris-Irving/hookify"
+      "homepage": "https://github.com/reyequis/hookify"
     }
   ]
 }
@@ -372,7 +372,7 @@ git add .claude-plugin/marketplace.json
 git commit -m "feat: make repo self-marketplacing
 
 Adding marketplace.json lets users install via:
-  /plugin marketplace add Chris-Irving/hookify
+  /plugin marketplace add reyequis/hookify
   /plugin install hookify@hookify
 
 The marketplace lists this single plugin with source set to '.'
@@ -2051,7 +2051,7 @@ implementing agent will draft a README that:
 - Lists the two bug fixes (with issue links)
 - Lists the cache feature
 - Lists the cherry-picks
-- Gives `/plugin marketplace add Chris-Irving/hookify` install instructions
+- Gives `/plugin marketplace add reyequis/hookify` install instructions
 - Notes Python 3.10+ requirement
 - Links to upstream issues for the bugs
 - Preserves Anthropic as primary author with Chris listed as fork maintainer
