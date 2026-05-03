@@ -210,18 +210,31 @@ def _resolve_rule_dirs() -> list[str]:
     return [project_dir, global_dir]
 
 
-def load_rules(event: str | None = None) -> list[Rule]:
-    """Load hookify rules from project-local and user-global .claude directories.
+def _current_source_mtimes() -> dict[str, float]:
+    """Glob both rule dirs and stat every matching file.
 
-    Searches <cwd>/.claude/ first, then ~/.claude/. Project rules take
-    precedence over global rules with the same ``name``. A project rule with
-    ``enabled: false`` suppresses a global rule with the same name.
+    Returns a dict mapping absolute file paths to their ``st_mtime``.
+    """
+    mtimes: dict[str, float] = {}
+    for rule_dir in _resolve_rule_dirs():
+        pattern = os.path.join(rule_dir, 'hookify.*.local.md')
+        for file_path in sorted(glob.glob(pattern)):
+            try:
+                mtimes[file_path] = os.path.getmtime(file_path)
+            except OSError:
+                # File vanished between glob and stat — skip it
+                continue
+    return mtimes
 
-    Args:
-        event: Optional event filter ("bash", "file", "stop", etc.)
 
-    Returns:
-        List of enabled Rule objects matching the event.
+def _parse_and_merge_rules() -> list[Rule]:
+    """Parse all rule files from both dirs and merge by name.
+
+    Project rules take precedence over global rules with the same name.
+    A project rule with ``enabled: false`` suppresses a global rule
+    with the same name.
+
+    Returns all enabled rules (no event filtering).
     """
     by_name: dict[str, Rule] = {}
     suppressed: set = set()
@@ -234,10 +247,6 @@ def load_rules(event: str | None = None) -> list[Rule]:
             try:
                 rule = load_rule_file(file_path)
                 if not rule:
-                    continue
-
-                # Filter by event if specified
-                if event and rule.event != 'all' and rule.event != event:
                     continue
 
                 # Skip if name already seen (project wins) or suppressed
@@ -268,6 +277,69 @@ def load_rules(event: str | None = None) -> list[Rule]:
                 continue
 
     return list(by_name.values())
+
+
+def _filter_by_event(rules: list[Rule], event: str | None) -> list[Rule]:
+    """Return rules matching *event*.
+
+    A rule matches if ``event`` is None (no filter), ``rule.event == 'all'``,
+    or ``rule.event == event``.
+    """
+    if event is None:
+        return rules
+    return [r for r in rules if r.event == 'all' or r.event == event]
+
+
+def load_rules(event: str | None = None) -> list[Rule]:
+    """Load hookify rules from project-local and user-global .claude directories.
+
+    Uses a JSON cache when available (see ``core.cache``).  The cache is
+    bypassed when ``HOOKIFY_NO_CACHE`` is set to a truthy value.
+
+    Searches <cwd>/.claude/ first, then ~/.claude/. Project rules take
+    precedence over global rules with the same ``name``. A project rule with
+    ``enabled: false`` suppresses a global rule with the same name.
+
+    Args:
+        event: Optional event filter ("bash", "file", "stop", etc.)
+
+    Returns:
+        List of enabled Rule objects matching the event.
+    """
+    # Import cache module here to avoid circular import
+    # (cache.py imports Condition/Rule from config_loader)
+    from core.cache import (
+        cache_path_for,
+        is_bypass_enabled,
+        is_cache_valid,
+        load_from_cache,
+        save_to_cache,
+    )
+
+    # Bypass mode: skip cache entirely
+    if is_bypass_enabled():
+        rules = _parse_and_merge_rules()
+        return _filter_by_event(rules, event)
+
+    # Resolve directories for cache key
+    dirs = _resolve_rule_dirs()
+    project_dir = dirs[0]
+    global_dir = dirs[-1]  # same as project_dir when CWD == $HOME
+
+    cp = cache_path_for(project_dir, global_dir)
+    current_mtimes = _current_source_mtimes()
+
+    # Try loading from cache
+    cached = load_from_cache(cp)
+    if cached is not None:
+        cached_rules, cached_sources = cached
+        if is_cache_valid(cached_sources, current_mtimes):
+            return _filter_by_event(cached_rules, event)
+
+    # Cache miss or invalid — parse from disk and save
+    rules = _parse_and_merge_rules()
+    save_to_cache(cp, rules, current_mtimes)
+    return _filter_by_event(rules, event)
 
 
 def load_rule_file(file_path: str) -> Rule | None:
