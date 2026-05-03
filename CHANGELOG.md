@@ -26,7 +26,7 @@ Initial fork of Anthropic's hookify with bug fixes and JSON cache.
 - `.claude-plugin/marketplace.json` for self-marketplacing.
 
 ### Internal
-- pytest test suite (66 tests; none in upstream).
+- pytest test suite (67 tests; none in upstream).
 - ruff lint + format.
 - GitHub Actions CI on Python 3.10, 3.11, 3.12.
 - Apache 2.0 license preserved from upstream.

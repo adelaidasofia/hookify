@@ -21,7 +21,7 @@ cherry-picks from the hookify-plus community fork.
 ## Development
 
 ```bash
-python3 -m pytest          # run tests (66 tests)
+python3 -m pytest          # run tests (67 tests)
 python3 -m ruff check .    # lint
 python3 -m ruff format .   # format
 ```
