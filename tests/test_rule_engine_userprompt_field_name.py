@@ -38,7 +38,7 @@ def test_user_prompt_field_matches_prompt_key():
             "prompt": "Check out https://arxiv.org/abs/2604.15597",
         },
     )
-    assert result.get("systemMessage") or result.get("decision") == "block" or "URL detected" in str(result), (
+    assert "URL detected" in result.get("systemMessage", ""), (
         f"Expected URL rule to fire but got: {result}"
     )
 
@@ -54,7 +54,7 @@ def test_prompt_field_matches_prompt_key():
             "prompt": "Check out https://arxiv.org/abs/2604.15597",
         },
     )
-    assert result.get("systemMessage") or result.get("decision") == "block" or "URL detected" in str(result), (
+    assert "URL detected" in result.get("systemMessage", ""), (
         f"Expected URL rule to fire but got: {result}"
     )
 
@@ -70,7 +70,7 @@ def test_user_prompt_field_matches_user_prompt_key_backcompat():
             "user_prompt": "Check out https://arxiv.org/abs/2604.15597",
         },
     )
-    assert result.get("systemMessage") or result.get("decision") == "block" or "URL detected" in str(result), (
+    assert "URL detected" in result.get("systemMessage", ""), (
         f"Expected URL rule to fire (backcompat path) but got: {result}"
     )
 
