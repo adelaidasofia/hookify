@@ -21,7 +21,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dev dependencies
-        run: pip install pytest ruff
+        # ruff is PINNED on purpose. `pip install ruff` takes the newest release,
+        # so a formatter release turns every open PR in this repo red without a
+        # commit touching any code — 0.16.x began formatting python blocks inside
+        # markdown, which reddened this repo on a docs/ plan file. Bump
+        # deliberately, with the reformat in the same commit.
+        run: pip install pytest 'ruff==0.16.6'
 
       - name: Lint with ruff
         run: ruff check .

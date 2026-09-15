@@ -612,8 +612,7 @@ def load_rules(event: Optional[str] = None) -> List[Rule]:
                 continue
             except Exception as e:
                 print(
-                    f"Warning: Unexpected error loading {file_path} "
-                    f"({type(e).__name__}): {e}",
+                    f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}",
                     file=sys.stderr,
                 )
                 continue
@@ -705,8 +704,11 @@ class TestWriteToolNewTextFieldExtraction:
             enabled=True,
             event="file",
             conditions=[
-                Condition(field="new_text", operator="contains",
-                          pattern="index-url = https://pypi.org/simple"),
+                Condition(
+                    field="new_text",
+                    operator="contains",
+                    pattern="index-url = https://pypi.org/simple",
+                ),
             ],
             action="block",
             message="No public registry",
@@ -845,9 +847,7 @@ class TestCachePath:
         assert path.startswith(str(tmp_path))
         assert ".cache/" in path
 
-    def test_cache_path_falls_back_to_xdg_when_plugin_root_unset(
-        self, tmp_path, monkeypatch
-    ):
+    def test_cache_path_falls_back_to_xdg_when_plugin_root_unset(self, tmp_path, monkeypatch):
         monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
         monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
         path = cache_path_for("/p/.claude", "/g/.claude")
@@ -1343,8 +1343,7 @@ def _parse_and_merge_rules() -> list[Rule]:
                 continue
             except Exception as e:
                 print(
-                    f"Warning: Unexpected error loading {file_path} "
-                    f"({type(e).__name__}): {e}",
+                    f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}",
                     file=sys.stderr,
                 )
                 continue
@@ -1684,11 +1683,11 @@ Replace:
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> 'Condition':
+def from_dict(cls, data: Dict[str, Any]) -> "Condition":
     return cls(
-        field=data.get('field', ''),
-        operator=data.get('operator', 'regex_match'),
-        pattern=data.get('pattern', '')
+        field=data.get("field", ""),
+        operator=data.get("operator", "regex_match"),
+        pattern=data.get("pattern", ""),
     )
 ```
 
@@ -1696,19 +1695,17 @@ With:
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> 'Condition':
+def from_dict(cls, data: Dict[str, Any]) -> "Condition":
     """Create Condition from dict.
 
     Accepts both 'pattern' and 'value' as the matching string;
     'pattern' wins if both are present.
     """
-    pattern = data.get('pattern')
+    pattern = data.get("pattern")
     if pattern is None:
-        pattern = data.get('value', '')
+        pattern = data.get("value", "")
     return cls(
-        field=data.get('field', ''),
-        operator=data.get('operator', 'regex_match'),
-        pattern=pattern
+        field=data.get("field", ""), operator=data.get("operator", "regex_match"), pattern=pattern
     )
 ```
 
@@ -1791,8 +1788,11 @@ def test_read_tool_maps_to_read_event(isolated_env, monkeypatch):
     monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(PLUGIN_ROOT))
     result = _run_hook(
         "pretooluse",
-        {"hook_event_name": "PreToolUse", "tool_name": "Read",
-         "tool_input": {"file_path": "/etc/passwd"}},
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/etc/passwd"},
+        },
         monkeypatch,
     )
     assert "systemMessage" in result
@@ -1803,22 +1803,22 @@ def test_read_tool_maps_to_read_event(isolated_env, monkeypatch):
 
 ```python
 event = None
-if tool_name == 'Bash':
-    event = 'bash'
-elif tool_name in ['Edit', 'Write', 'MultiEdit', 'Update']:
-    event = 'file'
+if tool_name == "Bash":
+    event = "bash"
+elif tool_name in ["Edit", "Write", "MultiEdit", "Update"]:
+    event = "file"
 ```
 
 With:
 
 ```python
 event = None
-if tool_name == 'Bash':
-    event = 'bash'
-elif tool_name in ['Edit', 'Write', 'MultiEdit', 'Update']:
-    event = 'file'
-elif tool_name in ['Read', 'Glob', 'Grep', 'LS']:
-    event = 'read'
+if tool_name == "Bash":
+    event = "bash"
+elif tool_name in ["Edit", "Write", "MultiEdit", "Update"]:
+    event = "file"
+elif tool_name in ["Read", "Glob", "Grep", "LS"]:
+    event = "read"
 ```
 
 **Verify + Commit:**
@@ -1892,8 +1892,11 @@ def test_not_regex_match_fires_when_pattern_absent():
     engine = RuleEngine()
     result = engine.evaluate_rules(
         [rule],
-        {"hook_event_name": "PreToolUse", "tool_name": "Bash",
-         "tool_input": {"command": "rm -rf /"}},
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "rm -rf /"},
+        },
     )
     assert result != {}, "should fire when pattern is NOT present"
 
@@ -1910,8 +1913,11 @@ def test_not_regex_match_silent_when_pattern_present():
     engine = RuleEngine()
     result = engine.evaluate_rules(
         [rule],
-        {"hook_event_name": "PreToolUse", "tool_name": "Bash",
-         "tool_input": {"command": "safe-prefix mything"}},
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "safe-prefix mything"},
+        },
     )
     assert result == {}, "should NOT fire when pattern is present"
 ```

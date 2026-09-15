@@ -1,0 +1,49 @@
+# Branch-protection intent — version-controlled source of truth for
+# hookify/main's required_status_checks posture (MYC-789 pattern, mirroring
+# mycelium-site's + mycelium-studio's files).
+#
+# WHY: branch protection lives in GitHub's ruleset UI, not in the repo, so the
+# recorded posture and the live posture drift silently. This file is the
+# record.
+#
+# This file does NOT change the ruleset. To change posture, edit this file AND
+# the ruleset together.
+
+branch: main
+
+# Verified 2026-09-15 via `gh api repos/adelaidasofia/hookify/rules/branches/main`:
+# the live ruleset holds ONLY non_fast_forward + deletion. ZERO required status
+# checks — same starting posture MYC-1746 found (and fixed) on mycelium-site
+# before it auto-deployed to prod. hookify does not deploy anywhere, so the
+# blast radius of an unguarded merge is lower, but "no required checks" is still
+# worth recording rather than leaving silent.
+required: []
+
+# Deliberately advisory — these post, but nothing here blocks a merge today.
+advisory:
+  # CI (test 3.10/3.11/3.12) + personal-pii-scrub (scrub) + security-audit
+  # (pip-audit) all post reliably and have been green on every real run so
+  # far. Not GitHub-required, but treat a red one here as a real signal
+  # before merging past it — this list records what GitHub enforces, not
+  # what a human should ignore.
+  - "test (3.10)"
+  - "test (3.11)"
+  - "test (3.12)"
+  - "scrub"
+  - "pip-audit"
+  # claude-review (Claude Code Review Action) fails on EVERY run in this
+  # repo on infra grounds, not a code finding: `gh secret list` shows only
+  # PII_PRIVATE_PATTERNS configured — no ANTHROPIC_API_KEY or
+  # CLAUDE_CODE_OAUTH_TOKEN, so the action errors with "Environment variable
+  # validation failed" before it can review anything (verified against the
+  # run log for PR #1, both before and after this file was added). Adding a
+  # credential is a repo-secret decision outside a PR-sweep session's
+  # authority (entering an API key is a prohibited action per the assistant's
+  # own operating rules), so this stays advisory until someone arms it with
+  # `gh secret set ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`. PR #1
+  # (the security-control change this check should have reviewed) got an
+  # independent manual review instead, recorded in the PR thread.
+  - "claude-review"
+  # skipped by design on a non-dependabot PR; never posts success/failure to
+  # judge.
+  - "auto-merge"
