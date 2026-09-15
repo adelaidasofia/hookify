@@ -18,6 +18,15 @@ jobs:
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
 
+    # Skip cleanly when this repo has no Claude credential configured, instead
+    # of hard-failing every PR. CLAUDE_CODE_OAUTH_TOKEN is the only credential
+    # the step below passes to the action; unset, the action errors with
+    # "Environment variable validation failed" before it reviews anything —
+    # a misleading FAILURE for what is really "not armed yet" (verified via
+    # `gh secret list`: this repo has no CLAUDE_CODE_OAUTH_TOKEN or
+    # ANTHROPIC_API_KEY). Arm with:
+    #   gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
+    if: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
