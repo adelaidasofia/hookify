@@ -21,10 +21,15 @@ name: personal-pii-scrub
 #   published writing title). Discloses nothing; keeps fork PRs and
 #   unarmed installs measurably gated.
 #   PRIVATE tier — the repo Actions secret PII_PRIVATE_PATTERNS, one
-#   POSIX extended regex per line, injected at run time and masked
-#   line-by-line in Actions logs. The plaintext roster lives ONLY in the
-#   private generator vault and each managed repo secret store, never in
-#   any public artifact.
+#   POSIX extended regex per line, injected at run time. GitHub Actions
+#   does NOT auto-mask a multi-line secret line-by-line — it only redacts
+#   exact occurrences of the FULL registered value (actions/runner#161;
+#   real-world miss: CVE-2021-32074). So every scan function below reports
+#   MATCH LOCATION (file:line) only, never the pattern or matched line
+#   content, on ALL tiers — the one place this would otherwise leak is
+#   the log line printed when the gate actually catches a real leak. The
+#   plaintext roster lives ONLY in the private generator vault and each
+#   managed repo secret store, never in any public artifact OR log.
 # Adding/removing patterns: edit the private roster next to the generator
 # (in ⚙️ Meta/scripts/gh-harden-repos.sh) AND, for public-tier tokens,
 # this template, in the same commit, then let the harden run propagate.
@@ -166,8 +171,17 @@ jobs:
             for p in "$@"; do
               m=$(git grep -nE "$p"                 -- ':!README*' ':!CHANGELOG*' ':!docs/' ':!*.md'                 ':!LICENSE*' ':!COPYING*' ':!NOTICE*'                 ':!AUTHORS*' ':!MAINTAINERS*'                 ':!*pyproject.toml' ':!*setup.py' ':!*setup.cfg'                 ':!*package.json' ':!*Cargo.toml' ':!*manifest.json' ':!*server.json'                 ':!.claude-plugin/'                 ':!.env.example' ':!*.env.example'                 ':!tests/integration/test_smoke.py'                 ':!vendor/' ':!node_modules/' ':!*.lock'                 ':!package-lock.json' ':!pnpm-lock.yaml'                 ':!.github/workflows/personal-pii-scrub.yml' 2>/dev/null || true)
               if [ -n "$m" ]; then
-                printf '%s\n' "::error::personal-data pattern leaked into source: $p"
-                printf '%s\n' "$m"
+                # LOCATION only — never the pattern or matched content. This
+                # function scans the PRIVATE tier too, and GitHub Actions does
+                # NOT auto-mask individual lines of a multi-line secret (it
+                # only redacts exact occurrences of the FULL registered
+                # value — see actions/runner#161). Printing $p or $m here
+                # would push the private-name roster into a PUBLIC Actions
+                # log on the one run where the gate actually catches a real
+                # leak — recreating GUARD-DISCLOSES-THE-SECRET-IT-GUARDS
+                # through the log instead of the file (MYC-3943 follow-up).
+                printf '%s\n' "::error::personal-data pattern leaked into source — value withheld from the log; see location(s) below"
+                printf '%s\n' "$m" | cut -d: -f1,2
               fi
             done
             return 0
@@ -329,8 +343,11 @@ jobs:
             for p in "$@"; do
               m=$(grep -rnaE                 --exclude='README*' --exclude='CHANGELOG*' --exclude='*.md'                 --exclude='LICENSE*' --exclude='COPYING*' --exclude='NOTICE*'                 --exclude='AUTHORS*' --exclude='MAINTAINERS*'                 --exclude='pyproject.toml' --exclude='setup.py'                 --exclude='setup.cfg' --exclude='package.json'                 --exclude='Cargo.toml' --exclude='manifest.json'                 --exclude='.env.example'                 --exclude='test_smoke.py'                 --exclude='*.lock' --exclude='package-lock.json'                 --exclude='pnpm-lock.yaml'                 --exclude-dir='vendor' --exclude-dir='node_modules'                 --exclude-dir='docs' --exclude-dir='.claude-plugin'                 "$p" "$dir" 2>/dev/null || true)
               if [ -n "$m" ]; then
-                printf '%s\n' "::error::personal-data pattern leaked into archive: $p"
-                printf '%s\n' "$m"
+                # LOCATION only, same reasoning as scan_for() above (this
+                # scans the PRIVATE tier too — GitHub does not auto-mask a
+                # multi-line secret's individual lines).
+                printf '%s\n' "::error::personal-data pattern leaked into archive — value withheld from the log; see location(s) below"
+                printf '%s\n' "$m" | cut -d: -f1,2
               fi
             done
             return 0
@@ -484,8 +501,11 @@ jobs:
             for p in "$@"; do
               m=$(git grep -nE "$p"                 -- '*.md'                 ':!README*' ':!LICENSE*' ':!COPYING*' ':!NOTICE*'                 ':!AUTHORS*' ':!MAINTAINERS*' ':!CONTRIBUTING*'                 ':!CONTRIBUTORS*' ':!CITATION*'                 ':!vendor/' ':!node_modules/'                 ':!.github/workflows/personal-pii-scrub.yml' 2>/dev/null || true)
               if [ -n "$m" ]; then
-                printf '%s\n' "::error::private-data pattern leaked into markdown prose: $p"
-                printf '%s\n' "$m"
+                # LOCATION only, same reasoning as scan_for() above. This
+                # tier is PRIVATE-only, so every match here is exactly the
+                # content the log must never disclose.
+                printf '%s\n' "::error::private-data pattern leaked into markdown prose — value withheld from the log; see location(s) below"
+                printf '%s\n' "$m" | cut -d: -f1,2
               fi
             done
             return 0
